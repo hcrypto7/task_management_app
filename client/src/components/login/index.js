@@ -24,7 +24,6 @@ export default function Login() {
   });
   const [error, setError] = useState("");
   const handleChange = (event) => {
-    console.log(event.target)
     setData({ ...data, [event.currentTarget.name]: event.target.value });
   };
   const handleSubmit = async (event) => {
@@ -32,8 +31,8 @@ export default function Login() {
     try {
       const res = await axiosServices.post("/api/auth", data);
       localStorage.setItem("token", res.data.token);
-      console.log(res.data.token);
-      navigate("/home");
+      console.log("token from backend", res.data.token);
+      navigate("/home", { state: { user: res.data.user } });
       window.location.reload();
     } catch (error) {
       if (

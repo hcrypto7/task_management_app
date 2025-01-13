@@ -1,140 +1,102 @@
 const express = require("express");
-const router = express.Router();
-const { DynamoDB } = require("aws-sdk");
-const bcrypt = require("bcrypt");
-const { User } = require("../models/user");
 const jwt = require("jsonwebtoken");
-const { v4: uuidv4 } = require("uuid");
-var docClient = new DynamoDB.DocumentClient();
+const Task = require("../models/tasks");
+const router = express.Router();
 
-router.post("/create-task", async (req, res) => {
+// Middleware to verify JWT
+const verifyToken = (req, res, next) => {
+  const authHeader = req.header("Authorization");
+  if (!authHeader) {
+    console.log("Authorization header missing");
+    return res.status(401).send("Access Denied");
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  if (!token) {
+    console.log("Token missing");
+    return res.status(401).send("Access Denied");
+  }
+
   try {
-    const token = req.header("token");
-    if (!token) {
-      return res.status(401).json({ error: "Token is missing" });
-    }
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    const email = decodedToken.email;
-    const user = await User.findOne({ email: email });
+    const verified = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    req.user = verified;
+    next();
+  } catch (err) {
+    console.log("Invalid Token", err);
+    res.status(400).send("Invalid Token");
+  }
+};
 
-    if (!user) {
-      return res.status(401).json({ error: "Something went wrong!" });
-    }
-    const userId = user._id.toString();
-    const itemId = uuidv4();
-    var item = {
-      id: itemId,
-      userId: userId,
-      taskTitle: req.body.taskTitle,
-      taskDetail: req.body.taskDetail,
-      taskDeadline: req.body.taskDeadline,
-    };
+// Create a new task
+router.post("/", verifyToken, async (req, res) => {
+  const { name, description, priority, deadline, status } = req.body;
+  const task = new Task({
+    name,
+    owner: req.user.email,
+    description,
+    priority,
+    deadline,
+    status,
+  });
 
-    var dbParam = {
-      TableName: "tasks",
-      Item: item,
-    };
-
-    docClient.put(dbParam, function (err, data) {
-      if (err) {
-        return res.status(500).send("Error :", err);
-      }
-    });
-    var params = {
-      TableName: "tasks",
-      Key: { id: itemId, userId: userId },
-    };
-
-    docClient.get(params, function (err, data) {
-      if (err) {
-        return res.status(404).send(err);
-      } else {
-        return res.status(200).send(data.Item);
-      }
-    });
-  } catch (error) {
-    res.status(500).send("Internal server error");
+  try {
+    const savedTask = await task.save();
+    res.status(201).send(savedTask);
+  } catch (err) {
+    res.status(400).send(err);
   }
 });
 
-router.get("/", async (req, res) => {
+// Get all tasks
+router.get("/", verifyToken, async (req, res) => {
   try {
-    const token = req.header("token");
-    if (!token) {
-      return res.status(401).json({ error: "Token is missing" });
-    }
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    const email = decodedToken.email;
-    const user = await User.findOne({ email: email });
-
-    if (!user) {
-      return res.status(401).json({ error: "Something went wrong!" });
-    }
-    const userId = user._id.toString();
-
-    const queryParams = {
-      TableName: "tasks",
-      FilterExpression: "userId = :value",
-      ExpressionAttributeValues: {
-        ":value": userId,
-      },
-    };
-    const result = await docClient.scan(queryParams).promise();
-    return res.status(200).send(result.Items);
-  } catch (error) {
-    console.log(error);
+    const tasks = await Task.find({ owner: req.user.email });
+    res.status(200).send(tasks);
+  } catch (err) {
+    res.status(400).send(err);
   }
 });
 
-router.post("/edit", async (req, res) => {
+// Get a specific task
+router.get("/:id", verifyToken, async (req, res) => {
   try {
-    const taskId = req.body.id;
-
-    var item = {
-      id: taskId,
-      userId: req.body.userId,
-      taskTitle: req.body.taskTitle,
-      taskDetail: req.body.taskDetail,
-      taskDeadline: req.body.taskDeadline,
-    };
-
-    var dbParam = {
-      TableName: "tasks",
-      Item: item,
-    };
-
-    docClient.put(dbParam, function (err, data) {
-      if (err) {
-        return res.status(500).send("Error :", err);
-      }
+    const task = await Task.findOne({
+      _id: req.params.id,
+      owner: req.user.email,
     });
-  } catch (error) {
-    res.status(500).send("Internal server error");
+    if (!task) return res.status(404).send("Task not found");
+    res.status(200).send(task);
+  } catch (err) {
+    res.status(400).send(err);
   }
 });
 
-router.delete("/delete", async (req, res) => {
+// Update a task
+router.put("/:id", verifyToken, async (req, res) => {
   try {
-    const taskId = req.body.id;
-    const userId = req.body.userId;
-    var params = {
-      TableName: "tasks",
-      Key: {
-        id: taskId,
-        userId: userId,
-      },
-    };
-    //  console.log(params)
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user.email },
+      req.body,
+      { new: true }
+    );
+    if (!updatedTask) return res.status(404).send("Task not found");
+    res.status(200).send(updatedTask);
+  } catch (err) {
+    res.status(400).send(err);
+  }
+});
 
-    docClient.delete(params, function (err, data) {
-      if (err) {
-        console.log("Error", err);
-      } else {
-        return res.status(200).send("Task deleted successfully");
-      }
+// Delete a task
+router.delete("/:id", verifyToken, async (req, res) => {
+  try {
+    const deletedTask = await Task.findOneAndDelete({
+      _id: req.params.id,
+      owner: req.user.email,
     });
-  } catch (error) {
-    res.status(500).send("Internal server error");
+    if (!deletedTask) return res.status(404).send("Task not found");
+    res.status(200).send("Task deleted");
+  } catch (err) {
+    res.status(400).send(err);
   }
 });
 

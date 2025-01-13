@@ -11,40 +11,38 @@ import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useState } from "react";
-import axios from "axios";
+import axiosServices from "../../utils/api";
 import { useNavigate } from "react-router-dom";
 
 const defaultTheme = createTheme();
 
-export default function Login() {
+export default function Signup() {
   const navigate = useNavigate();
   const [data, setData] = useState({
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
   });
   const [error, setError] = useState("");
   const handleChange = (event) => {
-    // console.log(event.target)
+    console.log(event.target.value);
     setData({ ...data, [event.currentTarget.name]: event.target.value });
   };
   const handleSubmit = async (event) => {
     event.preventDefault();
+    // console.log(data)
     try {
-      const url =
-        "https://task-management-application-8t8x.onrender.com/api/auth";
-      const res = await axios.post(url, data);
-      localStorage.setItem("token", res.data.token);
-      // console.log(res.data.token);
-      navigate("/home");
-      window.location.reload();
+      const res = await axiosServices.post("/api/users", data);
+      console.log("response from server :", res);
+      navigate("/login");
     } catch (error) {
       if (
         error.response &&
         error.response.status >= 400 &&
         error.response.status <= 500
-      ) {
+      )
         setError(error.response.data.message);
-      }
     }
   };
 
@@ -64,36 +62,62 @@ export default function Login() {
             <LockOutlinedIcon />
           </Avatar>
           <Typography component="h1" variant="h5">
-            Sign in
+            Sign up
           </Typography>
           <Box
             component="form"
-            onSubmit={handleSubmit}
             noValidate
-            sx={{ mt: 1 }}
+            onSubmit={handleSubmit}
+            sx={{ mt: 3 }}
           >
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              onChange={handleChange}
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              autoFocus
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              onChange={handleChange}
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-            />
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  autoComplete="given-name"
+                  onChange={handleChange}
+                  name="firstName"
+                  required
+                  fullWidth
+                  id="firstName"
+                  label="First Name"
+                  autoFocus
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  onChange={handleChange}
+                  id="lastName"
+                  label="Last Name"
+                  name="lastName"
+                  autoComplete="family-name"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  required
+                  fullWidth
+                  onChange={handleChange}
+                  id="email"
+                  label="Email Address"
+                  name="email"
+                  autoComplete="email"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  required
+                  fullWidth
+                  onChange={handleChange}
+                  name="password"
+                  label="Password"
+                  type="password"
+                  id="password"
+                  autoComplete="new-password"
+                />
+              </Grid>
+            </Grid>
             {error && <div>{error}</div>}
             <Button
               type="submit"
@@ -101,12 +125,12 @@ export default function Login() {
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
             >
-              Sign In
+              Sign Up
             </Button>
-            <Grid container>
+            <Grid container justifyContent="flex-end">
               <Grid item>
-                <Link href="/signup" variant="body2">
-                  {"Don't have an account? Sign Up"}
+                <Link href="/login" variant="body2">
+                  Already have an account? Sign in
                 </Link>
               </Grid>
             </Grid>

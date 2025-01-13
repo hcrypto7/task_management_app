@@ -1,15 +1,19 @@
 const mongoose = require("mongoose");
 
 module.exports = () => {
-  const connectionParams = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  };
+  const dbUri = process.env.DATABASE;
+  if (!dbUri) {
+    console.error(
+      "Database connection string (DB) is not defined in environment variables."
+    );
+    return;
+  }
+
   try {
-    mongoose.connect(process.env.DB, connectionParams);
+    mongoose.connect(dbUri);
     console.log("Connected to database successfully");
   } catch (error) {
-    console.log(error);
-    console.log("could not connect to database");
+    console.error("Error connecting to database:", error);
+    console.log("Could not connect to database");
   }
 };

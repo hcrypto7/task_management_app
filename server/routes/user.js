@@ -22,7 +22,7 @@ router.post("/", async (req, res) => {
 
     res.status(201).send({ user: newUser });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).send("Internal server error.");
   }
 });

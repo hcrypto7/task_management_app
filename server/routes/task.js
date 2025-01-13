@@ -7,13 +7,11 @@ const router = express.Router();
 const verifyToken = (req, res, next) => {
   const authHeader = req.header("Authorization");
   if (!authHeader) {
-    console.log("Authorization header missing");
     return res.status(401).send("Access Denied");
   }
 
   const token = authHeader.replace("Bearer ", "");
   if (!token) {
-    console.log("Token missing");
     return res.status(401).send("Access Denied");
   }
 
@@ -22,7 +20,6 @@ const verifyToken = (req, res, next) => {
     req.user = verified;
     next();
   } catch (err) {
-    console.log("Invalid Token", err);
     res.status(400).send("Invalid Token");
   }
 };

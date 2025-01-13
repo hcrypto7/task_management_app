@@ -44,7 +44,7 @@ const Main = () => {
   const [data, setData] = useState({
     name: "",
     description: "",
-    priority: "",
+    priority: "High",
     status: false,
     deadline: "",
   });
@@ -75,7 +75,7 @@ const Main = () => {
         },
       });
       if (res.status === 200) setTasks(res.data);
-      else console.log("Error :", res.status);
+      else console.error("Error :", res.status);
     } catch (error) {
       console.error(error);
     }
@@ -121,11 +121,19 @@ const Main = () => {
     }
   };
 
+  const handleCompleteTask = (task_data) => {
+    try {
+      handleUpdate({ ...task_data, status: true });
+      alert("Task marked as completed");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleEdit = (task_data) => {
     setEditModal(true);
     setTask({
-      ...task,
-      id: task_data.id,
+      _id: task_data._id,
       owner: task_data.owner,
       name: task_data.name,
       description: task_data.description,
@@ -137,9 +145,8 @@ const Main = () => {
   const handleUpdate = async (task_data) => {
     try {
       const res = await axiosServices.put(
-        `/api/tasks/${task_data.id}`,
+        `/api/tasks/${task_data._id}`,
         {
-          id: task_data.id,
           owner: task_data.owner,
           name: task_data.name,
           description: task_data.description,
@@ -155,9 +162,13 @@ const Main = () => {
           },
         }
       );
+      if (res.status === 200) {
+        alert("Task updated successfully");
+        setEditModal(false);
+      }
       fetchTasks();
     } catch (error) {
-      console.error(error);
+      console.error("Error updating task:", error); // Add logging to debug
     }
   };
 
@@ -193,7 +204,16 @@ const Main = () => {
       <Container sx={{ mt: 5 }}>
         <Button
           variant="outlined"
-          onClick={() => setTaskModal(true)}
+          onClick={() => {
+            setTaskModal(true);
+            setData({
+              name: "",
+              description: "",
+              priority: "",
+              status: false,
+              deadline: "",
+            });
+          }}
           sx={{
             "&:hover": {
               backgroundColor: "#0069d9",
@@ -219,7 +239,6 @@ const Main = () => {
                 type="text"
                 variant="outlined"
                 color="secondary"
-                label="Task Title"
                 name="name"
                 onChange={(e) => handleInput(e)}
                 value={data.name}
@@ -232,7 +251,6 @@ const Main = () => {
                 type="text"
                 variant="outlined"
                 color="secondary"
-                label="Task Details"
                 name="description"
                 multiline
                 rows={2}
@@ -251,7 +269,6 @@ const Main = () => {
                     onChange={(e) => handleInput(e)}
                     name="priority"
                     value={data.priority}
-                    label="Priority"
                     defaultValue="High"
                   >
                     <MenuItem value="High">High</MenuItem>
@@ -266,10 +283,9 @@ const Main = () => {
                     type="date"
                     variant="outlined"
                     color="secondary"
-                    label="Task Deadline"
                     name="deadline"
                     onChange={(e) => handleInput(e)}
-                    value={data.deadline}
+                    value={data.deadline ? data.deadline.split("T")[0] : ""}
                     fullWidth
                     required
                   />
@@ -341,9 +357,9 @@ const Main = () => {
                   <InputLabel>Priority</InputLabel>
                   <Select
                     labelId="priority-label"
-                    onChange={(e) => handleInput(e)}
+                    onChange={(e) => handleEditInput(e)}
                     name="priority"
-                    value={data.priority}
+                    value={task.priority}
                     defaultValue="High"
                   >
                     <MenuItem value="High">High</MenuItem>
@@ -358,8 +374,8 @@ const Main = () => {
                     variant="outlined"
                     color="secondary"
                     name="deadline"
-                    onChange={(e) => handleInput(e)}
-                    value={data.deadline}
+                    onChange={(e) => handleEditInput(e)}
+                    value={task.deadline ? task.deadline.split("T")[0] : ""}
                     fullWidth
                     required
                   />
@@ -369,7 +385,6 @@ const Main = () => {
                 <Button
                   variant="outlined"
                   color="secondary"
-                  type="submit"
                   onClick={() => handleUpdate(task)}
                 >
                   Save
@@ -403,20 +418,24 @@ const Main = () => {
                   <TableCell>{task.name}</TableCell>
                   <TableCell>{task.description}</TableCell>
                   <TableCell>{task.priority}</TableCell>
-                  <TableCell>{task.deadline}</TableCell>
+                  <TableCell>
+                    {new Date(task.deadline).toDateString()}
+                  </TableCell>
                   <TableCell>{task.status ? "Completed" : "Ongoing"}</TableCell>
                   <TableCell>
+                    {!task.status && (
+                      <IconButton
+                        variant="outlined"
+                        onClick={() => handleCompleteTask(task)}
+                      >
+                        <CheckIcon />
+                      </IconButton>
+                    )}
                     <IconButton
                       variant="outlined"
                       onClick={() => handleEdit(task)}
                     >
-                      <CheckIcon>Edit</CheckIcon>
-                    </IconButton>
-                    <IconButton
-                      variant="outlined"
-                      onClick={() => handleEdit(task)}
-                    >
-                      <EditIcon>Edit</EditIcon>
+                      <EditIcon />
                     </IconButton>
                     <IconButton
                       variant="outlined"
